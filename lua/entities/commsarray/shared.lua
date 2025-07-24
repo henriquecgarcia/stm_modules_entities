@@ -32,27 +32,7 @@ function ENT:SetupDataTables()
             max = 10000,
         }
     } )
-	self:NetworkVar( "Bool", 1, "DisableComms", {
-		KeyName = "DisableComms",
-		Edit = {
-			type = "Boolean",
-			title = "Disable /comms",
-			category = "Command Settings (When entity is destroyed.)",
-			min = 0,
-			max = 1,
-		}
-	} )
-	self:NetworkVar( "Bool", 2, "DisableAdvert", {
-		KeyName = "DisableAdvert",
-		Edit = {
-			type = "Boolean",
-			title = "Disable /advert",
-			category = "Command Settings (When entity is destroyed.)",
-			min = 0,
-			max = 1,
-		}
-	} )
-	self:NetworkVar( "Bool", 3, "DisplayHealth", {
+	self:NetworkVar( "Bool", 1, "DisplayHealth", {
 		KeyName = "DisplayHealth",
 		Edit = {
 			type = "Boolean",
@@ -64,8 +44,6 @@ function ENT:SetupDataTables()
 	
 	if SERVER then
 		self:SetCommsHealth( 200 )
-		self:SetDisableComms( false )
-		self:SetDisableAdvert( false )
 		self:SetDisplayHealth( true )
 	end
 end
