@@ -247,6 +247,21 @@ hook.Add( "ShouldIgnoreLifeSupportDamage", "DisableLifeSupportDamage", function(
 	end
 end )
 
+hook.Add( "ShouldIgnoreGravity", "ShouldIgnoreGravity", function( ply, location_data )
+	if not IsValid( ply ) or not ply:IsPlayer() then return end
+	local pMovement = ply:GetMoveType()
+	if pMovement == MOVETYPE_NOCLIP or pMovement == MOVETYPE_OBSERVER then return true end
+
+	local pos = ply:GetPos()
+	if #location_data == 0 then
+		for _, zone in ipairs( safe_zones ) do
+			if pos:WithinAABox( zone.min, zone.max ) then
+				return true, false -- Ignore gravity, but don't overwrite gravity settings.
+			end
+		end
+	end
+end)
+
 concommand.Add( "star_trek_entities_save", function( ply, cmd, args )
 	if not IsValid( ply ) or not ply:IsAdmin() then
 		print( "You must be an admin to use this command." )
