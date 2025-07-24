@@ -119,7 +119,7 @@ local function ReloadStarTrekEntities()
 			end
 		end
 		ent:Activate()
-		ent:Freeze( true )
+		-- ent:Freeze( true )
 
 		ent.SQL_ID = row.id
 		ent_count = ent_count + 1
@@ -127,15 +127,124 @@ local function ReloadStarTrekEntities()
 	print( "All entities loaded from the database. " .. ent_count .. " entities loaded." )
 end
 hook.Add( "InitPostEntity", "ReloadStarTrekEntities", function()
-	CreateSQLTable()
-	ReloadStarTrekEntities()
+	timer.Simple(1, function()
+		CreateSQLTable()
+		ReloadStarTrekEntities()
+	end )
 end )
 
-hook.Add( "ShouldIgnoreLifeSupportDamagePlayer", "DisableLifeSupportDamage", function( ent, ply, section, deck )
-	if not IsValid( ent ) or not ent:IsPlayer() then return end
-	local pMovement = ent:GetMoveType()
+local safe_zones = {
+	{ -- Turbo Lift [Halfway] + TP Buffer
+		min = Vector(8258.139648, 572.089539, 13468.325195),
+		max = Vector(7241.450195, -552.128723, 11847.990234)
+	},
+	{ -- Holodeck - The Void
+		min = Vector( -2035.248779, -11788.853516, 13971.599609 ),
+		max = Vector( -8471.815430, -5346.975098, 12336.586914 )
+	},
+	{ -- Holodeck - Waste Land
+		min = Vector( 15300.295898, 14036.236328, 17559.767578 ),
+		max = Vector( 2739.603027, 2675.925537, 11989.919922 ),
+	},
+	{ -- Holodeck - Holo lab
+		min = Vector( -2365.034668, 2035.330322, 13131.249023 ),
+		max = Vector( -5893.335449, 5428.146484, 12473.782227 ),
+	},
+
+	-- AUX AREAS!
+	{
+		min = Vector( -5950.541992, 5265.229492, 13124.010742 ),
+		max = Vector( -13579.957031, 1857.106934, 12494.546875 ),
+	},
+	{
+		min = Vector( -13567.231445, 6074.521484, 11368.706055 ),
+		max = Vector( -2346.298584, 11287.033203, 15019.102539 ),
+	},
+
+	--[[
+	{ -- Jefferies Tubes Deck 1 + Deck 2 (part far)
+		min = Vector( 515.612061, -298.262665, 13143.922852 ),
+		max = Vector( 701.765198, 306.156433, 13480.488281 ),
+	},
+	{ -- Jefferies Tubes Line 2->11 Cargo Bay [1]
+		min = Vector( 308.404144, -252.220474, 13282.774414 ),
+		max = Vector( 202.267166, -121.243828, 12028.001953 ),
+	},
+	{ -- Jefferies Tubes Line 2->11 Cargo Bay [2]
+		min = Vector( 319.397217, 252.582672, 12019.697266 ),
+		max = Vector( 195.434982, 115.439224, 13127.943359 ),
+	},
+	{ -- Jefferies Tubes Deck 2 (part near)
+		min = Vector( 673.158142, -291.950500, 13317.923828 ),
+		max = Vector( 122.818840, -129.512100, 13154.769531 ),
+	},
+	{ -- Jefferies Tubes Deck 3 (pt 1) [Turbo Lift]
+		min = Vector( 196.611542, -283.776306, 12978.406250 ),
+		max = Vector( 456.099548, -79.708206, 13193.854492 ),
+	},
+	{ -- Jefferies Tubes Deck 3 (pt 2) [Turbo Lift]
+		min = Vector( 452.418640, -233.646851, 13117.790039 ),
+		max = Vector( 337.003540, 280.271667, 12983.800781 ),
+	},
+	{ -- Jefferies Tubes Deck 3 (pt 3) [Turbo Lift]
+		min = Vector( 337.003540, 280.271667, 12983.800781 ),
+		max = Vector( 177.568771, 102.100716, 13164.157227 ),
+	},
+	{ -- Jefferies Tubes Deck 4 (pt 1) [Turbo Lift]
+		min = Vector( 504.969238, 77.298592, 12985.849609 ),
+		max = Vector( 23.326996, 483.349304, 12822.036133 ),
+	},
+	{ -- Jefferies Tubes Deck 4 (pt 2) [Turbo Lift]
+		min = Vector( 23.326996, 483.349304, 12822.036133 ),
+		max = Vector( 147.061447, -446.377350, 12953.959961 ),
+	},
+	{ -- Jefferies Tubes Deck 4 (pt 3) [Turbo Lift]
+		min = Vector( 30.903198, -263.881958, 12941.212891 ),
+		max = Vector( 286.910950, -121.433266, 12806.338867 ),
+	},
+	{ -- Deck 4 (pt 4) [Near TP]
+		min = Vector( 475.769104, -429.521271, 12829.966797 ),
+		max = Vector( -1784.618286, 1261.104858, 12973.960938 ),
+	},
+	{ -- Deck 4 (pt 5) [Security]
+		min = Vector( 1201.564453, -637.483337, 13024.683594 ),
+		max = Vector( 1341.373413, -494.433960, 12647.120117 ),
+	},
+	{ -- Jefferies Tubes Deck 5 (pt 1)
+		min = Vector( 1320.623413, -624.742981, 12800.092773 ),
+		max = Vector( -311.973633, 278.787689, 12674.935547 ),
+	},
+	{ -- Jefferies Tubes Deck 5 (pt 2)
+		min = Vector( -647.112732, -83.988098, 12777.410156 ),
+		max = Vector( 183.867371, -250.044586, 12666.375000 ),
+	},
+	{ -- Jefferies Tubes Deck 5 (pt 3)
+		min = Vector( -207.583710, 188.589844, 12688.931641 ),
+		max = Vector( -651.456909, 61.455784, 12993.793945 ),
+	},
+
+	--]]
+
+
+	--- Testing with the entire ship:
+	{
+		min = Vector( -2188.804199, -1236.667847, 14246.653320 ),
+		max = Vector( 2390.314209, 1144.067993, 11371.262695 ),
+	}
+}
+hook.Add( "ShouldIgnoreLifeSupportDamage", "DisableLifeSupportDamage", function( ply, location_data )
+	if not IsValid( ply ) or not ply:IsPlayer() then return end
+	local pMovement = ply:GetMoveType()
 	if pMovement == MOVETYPE_NOCLIP or pMovement == MOVETYPE_OBSERVER then return true end
 	if ply:GetModel() == "models/player/startrek_female_spacesuit.mdl" then return true end
+	local pos = ply:GetPos()
+	if #location_data == 0 then
+		for _, zone in ipairs( safe_zones ) do
+			if pos:WithinAABox( zone.min, zone.max ) then
+				return true, false -- Ignore damage, but don't overwrite life support.
+			end
+		end
+	end
 end )
 
 concommand.Add( "star_trek_entities_save", function( ply, cmd, args )
