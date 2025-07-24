@@ -3,7 +3,7 @@ AddCSLuaFile( "shared.lua" )
 include( "shared.lua" )
 
 function ENT:Initialize()
-	self:SetModel( "models/props_junk/trafficcone001a.mdl" )
+	self:SetModel( "models/maxofs2d/hover_rings.mdl" )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_NONE )
 	self:SetSolid( SOLID_VPHYSICS )
@@ -16,9 +16,8 @@ function ENT:Initialize()
 		phys:Wake()
 	end
 
-	self:SetColor( Color( 255, 0, 0, 255 ) ) -- Distinctive red color for visibility and identification
-
 	local success, deck, section = Star_Trek.Sections:DetermineSection( self:GetPos() )
+	self.Section = section
 	self.Deck = deck
 	if not success then
 		for k, v in player.Iterator() do
@@ -27,21 +26,22 @@ function ENT:Initialize()
 				v:ChatPrint( "You can't place this entity here. It's not a valid location." )
 			end
 		end
-		print( "Failed to determine section for DisableLifeSupport entity at position: " .. tostring(self:GetPos()) )
-		print( "You can't have this entity in space") --  #TODO: Make this a notification! people can't read prints
+		print( "Failed to determine section for DisableGravity entity at position: " .. tostring(self:GetPos()) )
+		print( "You can't have this entity in space") -- #TODO: Make this a notification! people can't read prints
 		self:Remove()
 		return
 	end
 
-	hook.Run( "OnDisableLifeSupportDeckCreated", self )
+
+	hook.Run( "OnDisableGravitySectionCreated", self )
 end
 
 
 function ENT:OnRemove()
-	if not self.Deck then
+	if not self.Deck or not self.Section then
 		return
 	end
-	hook.Run( "OnDisableLifeSupportDeckRemoved", self )
+	hook.Run( "OnDisableGravitySectionRemoved", self )
 end
 
 function ENT:CanProperty(ply, property)

@@ -3,7 +3,7 @@ AddCSLuaFile( "shared.lua" )
 include( "shared.lua" )
 
 function ENT:Initialize()
-	self:SetModel( "models/props_junk/trafficcone001a.mdl" )
+	self:SetModel( "models/maxofs2d/hover_rings.mdl" )
 	self:PhysicsInit( SOLID_VPHYSICS )
 	self:SetMoveType( MOVETYPE_NONE )
 	self:SetSolid( SOLID_VPHYSICS )
@@ -27,13 +27,13 @@ function ENT:Initialize()
 				v:ChatPrint( "You can't place this entity here. It's not a valid location." )
 			end
 		end
-		print( "Failed to determine section for DisableLifeSupport entity at position: " .. tostring(self:GetPos()) )
+		print( "Failed to determine section for DisableGravity entity at position: " .. tostring(self:GetPos()) )
 		print( "You can't have this entity in space") --  #TODO: Make this a notification! people can't read prints
 		self:Remove()
 		return
 	end
 
-	hook.Run( "OnDisableLifeSupportDeckCreated", self )
+	hook.Run( "OnDisableGravityDeckCreated", self )
 end
 
 
@@ -41,7 +41,7 @@ function ENT:OnRemove()
 	if not self.Deck then
 		return
 	end
-	hook.Run( "OnDisableLifeSupportDeckRemoved", self )
+	hook.Run( "OnDisableGravityDeckRemoved", self )
 end
 
 function ENT:CanProperty(ply, property)
