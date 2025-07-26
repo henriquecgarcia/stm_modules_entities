@@ -12,7 +12,6 @@ A comprehensive **Star Trek-themed addon** for Garry's Mod that brings essential
 
 - [Features](#-features)
 - [Entities](#-entities)
-- [Weapons & Tools](#-weapons--tools)
 - [Installation](#-installation)
 - [Usage](#-usage)
 - [Admin Commands](#-admin-commands)
@@ -89,22 +88,6 @@ A comprehensive **Star Trek-themed addon** for Garry's Mod that brings essential
 
 ---
 
-## 🔫 Weapons & Tools
-
-### ⚡ **Sonic Driver** (`sonic_driver`)
-- **Category**: Star Trek (Utilities)
-- **Purpose**: Universal repair tool for ship systems
-- **Controls**:
-  - **Left Click**: Repair targeted system
-  - **Reload**: Toggle tool on/off
-- **Features**:
-  - Repairs 15-30 HP per second
-  - Visual and audio feedback
-  - Automatic stop when system fully repaired
-  - Works on all ship systems (life support, gravity, communications)
-
----
-
 ## 📦 Installation
 
 1. **Download** the addon files
@@ -119,7 +102,8 @@ A comprehensive **Star Trek-themed addon** for Garry's Mod that brings essential
 - [Star Trek Modules - Base](https://steamcommunity.com/workshop/filedetails/?id=2711305622) (for Sections System)
 - Any **Star Trek ship maps** with deck/section support
 - [TBN - Content #3](https://steamcommunity.com/sharedfiles/filedetails/?id=2891353846)
-- [ONI - SWEP Base](https://steamcommunity.com/sharedfiles/filedetails/?id=2633296847) (for Sonic Driver)
+- [ONI - SWEP Base](https://steamcommunity.com/sharedfiles/filedetails/?id=2633296847)
+- [Star Trek Tools](https://steamcommunity.com/sharedfiles/filedetails/?id=3473791167)
 
 ---
 
@@ -277,7 +261,8 @@ hook.Add("OnDisableGravityDeckRemoved", "YourFunction", function(ent) end)
 - **Garry's Mod** (latest version)
 - [TBN - Content #3](https://steamcommunity.com/sharedfiles/filedetails/?id=2891353846)
 - [Star Trek Modules - Base](https://steamcommunity.com/workshop/filedetails/?id=2711305622) (for Sections System)
-- [ONI - SWEP Base](https://steamcommunity.com/sharedfiles/filedetails/?id=2633296847) (for Sonic Driver)
+- [ONI - SWEP Base](https://steamcommunity.com/sharedfiles/filedetails/?id=2633296847)
+- [Star Trek Tools](https://steamcommunity.com/sharedfiles/filedetails/?id=3473791167)
 
 ### 🗺️ **Recommended**
 - All the scripts of the [Star trek Modules](https://steamcommunity.com/sharedfiles/filedetails/?id=2818861994) for more immersive gameplay
@@ -288,9 +273,9 @@ hook.Add("OnDisableGravityDeckRemoved", "YourFunction", function(ent) end)
 ## 👏 Credits
 
 ### 👨‍💻 **Development Team**
-- **Primary Developer**: Void
-- **Original Sonic Driver**: GuuscoNL
-- **SWEP Base**: [Oninoni](https://steamcommunity.com/id/oninoni)
+- Void - **Main Developer of the Systems** [Steam Profile](https://steamcommunity.com/id/VoidRoyal/)
+- GuuscoNL - **Tools Creator & Developer** [Steam Profile](https://steamcommunity.com/profiles/76561198168362402)
+- Oninoni - **SWEP Base Developer & Star Trek TBN Owner** [Steam Profile](https://steamcommunity.com/id/oninoni)
 
 ### 🎨 **Assets & Resources**
 - **Models**: [Crazy Canadian](https://steamcommunity.com/profiles/76561198445454854)
