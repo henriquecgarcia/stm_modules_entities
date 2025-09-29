@@ -1,5 +1,4 @@
-if not SERVER then return end
-
+print("StarTrekEntities: Loaded sv_fix_think.lua")
 local valid_ents = {
 	["lifesupport"] = true,
 	["commsarray"] = true,

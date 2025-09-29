@@ -1,12 +1,13 @@
-if not SERVER then return end
-
+StarTrekEntities = StarTrekEntities or {}
+StarTrekEntities.Comms = StarTrekEntities.Comms or {}
+print("StarTrekEntities: Loaded sv_communication_scramble.lua")
 -- Define combining characters (Zalgo style)
 local zalgo_up = {"̍","̎","̄","̅","̿","̑","̆","̐","͒","͗","͑","̇","̈","̊","͂","̓","̈́","͊","͋","͌","̃","̂","̌","͐"}
 local zalgo_mid = {"̕","̛","̀","́","͘","̡","̢","̧","̨","̴","̵","̶","͜","͝","͞","͟","͠","͢","̸","̷","͡"}
 local zalgo_down = {"̖","̗","̘","̙","̜","̝","̞","̟","̠","̤","̥","̦","̩","̪","̫","̬","̭","̮","̯","̰","̱","̲","̳","̹","̺","̻","̼","ͅ","͇","͈","͉","͍","͎","͓","͔","͕","͖","͙","͚"}
 
 -- Scramble text with intensity level (1–6)
-function ScrambleText(text, intensity)
+function StarTrekEntities.Comms:ScrambleText(text, intensity)
 	if not text or text == "" then return "" end
 	if intensity == 0 then return text end
 	math.randomseed(os.time()) -- Seed random number generator
@@ -39,57 +40,40 @@ local comms_status = {
 	active = false,
 	scrambled_level = 0,
 }
+
 hook.Add("CommunicationsArrayInitialized", "ActivateCommsSystem", function(ent)
 	if not IsValid(ent) then return end
-	comms_status.active = true
-	print("Communications Array System Activated.")
-	for _, ply in pairs(player.GetAll()) do
-		if ply:IsAdmin() then
-			ply:ChatPrint("Communications Array System Activated.")
-		end
-	end
+	StarTrekEntities:SetStatus("comms", "active", true)
+	StarTrekEntities:SetStatus("comms", "scrambled_level", 0)
 end)
 
 hook.Add("CommunicationsArrayDamaged", "HandleCommsDamage", function(ent, dmg, damage_level)
 	if not IsValid(ent) then return end
-	comms_status.scrambled_level = damage_level
-	print("Communications Array Damaged. Scramble Level: " .. damage_level)
-	for _, ply in pairs(player.GetAll()) do
-		if ply:IsAdmin() then
-			ply:ChatPrint("Communications Array Damaged. Scramble Level: " .. damage_level)
-		end
-	end
+	StarTrekEntities:SetStatus("comms", "scrambled_level", damage_level)
 end)
 
 hook.Add("CommunicationsArrayRepairing", "HandleCommsRepairing", function(ent, intensity)
 	if not IsValid(ent) then return end
 
-	comms_status.scrambled_level = intensity
-	print("Communications Array Repairing. Scramble Level: " .. intensity)
-	for _, ply in pairs(player.GetAll()) do
-		if ply:IsAdmin() then
-			ply:ChatPrint("Communications Array Repairing. Scramble Level: " .. intensity)
-		end
-	end
-	comms_status.active = true -- Assume repairing means the system is still active
+	StarTrekEntities:SetStatus("comms", "scrambled_level", intensity)
+
+	StarTrekEntities:SetStatus("comms", "active", true) -- Assume repairing means the system is still active
 end)
 
 hook.Add("CommunicationsArrayRemoved", "DeactivateCommsSystem", function(ent, aux)
 	if not IsValid(ent) then return end
-	comms_status.active = false
-	comms_status.scrambled_level = 0
-	print("Communications Array System Deactivated.")
-	for _, ply in pairs(player.GetAll()) do
-		if ply:IsAdmin() then
-			ply:ChatPrint("Communications Array System Deactivated.")
-		end
-	end
+	StarTrekEntities:SetStatus("comms", "active", false)
+	StarTrekEntities:SetStatus("comms", "scrambled_level", 0)
 end)
 
 hook.Add("PlayerSay", "ScrambleChat", function(ply, text)
+	local EGM = GAMEMODE or GM
+	if (EGM.Name or "") == "Star Trek RP" then return end -- Don't interfere with EGM Star Trek RP
+	if EGM.AcceptEULA == true then return end -- Don't interfere with EGM (I think...)
 	if text[1] ~= "/" then return end -- Not my thing
 	text = text:sub(2) -- Remove the slash
 	local args = string.Explode(" ", text)
+	local comms_status = StarTrekEntities.Status.comms or {active = false, scrambled_level = 0}
 	if args[1] == "comms" then
 		if not comms_status.active then
 			ply:ChatPrint("Communications Array is not active.")
@@ -105,7 +89,7 @@ hook.Add("PlayerSay", "ScrambleChat", function(ply, text)
 			return ""
 		end
 		local intensity = comms_status.scrambled_level or 0
-		local scrambled_message = ScrambleText(message, intensity)
+		local scrambled_message = StarTrekEntities.Comms.ScrambleText(message, intensity)
 		BroadcastLua("chat.AddText(Color(255, 0, 0), '[Comms] " .. ply:Nick() .. "', Color(255, 255, 255), ': " .. scrambled_message .. "')")
 		return ""
 	end
