@@ -36,8 +36,8 @@ if SERVER then
 		StarTrekEntities:SyncStatus(ply)
 	end)
 	function StarTrekEntities:SetStatus(syst, key, value)
-		if not self[syst] then return end
-		self[syst][key] = value
+		if not self.Status[syst] then return end
+		self.Status[syst][key] = value
 		StarTrekEntities:SyncStatus(nil, syst)
 	end
 
@@ -74,6 +74,10 @@ if SERVER then
 		if not IsValid(ent) then return end
 		StarTrekEntities:SetStatus("gravity", "active", true)
 	end)
+
+	hook.Add("PlayerInitialSpawn", "StarTrekEntities.SyncStatus", function(ply)
+		StarTrekEntities:SyncStatus(ply)
+	end)
 else
 	function StarTrekEntities:SetStatus(syst, key, value)
 		ErrorNoHaltWithStack("StarTrekEntities:SetStatus should not be called on the client!\n")
@@ -90,13 +94,13 @@ else
 		end
 	end)
 end
-function StarTrekEntities.Status:Get(syst, key)
-	if not self[syst] then return nil end
-	return self[syst][key]
-end
 
-function StarTrekEntities:GetStatus(syst)
-	return self.Status[syst]
+function StarTrekEntities:GetStatus(syst, key, default)
+	if game.GetMap() ~= "rp_intrepid_v1" then return key == "active" or default end
+	if not self.Status[syst] then
+		return default
+	end
+	return self.Status[syst][key] or default
 end
 
 
