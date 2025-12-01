@@ -15,19 +15,7 @@ function ENT:Initialize()
 	local CommPhys = self:GetPhysicsObject()
 	if IsValid( CommPhys ) then
 		CommPhys:Wake()
-	end
-	self.AuxCommunications = false
-
-	local ent_count = #ents.FindByClass( self:GetClass() )
-	if ent_count > 1 then
-		self:Remove()
-		print( "Too many Communications Arrays! Please remove some before spawning more." )
-        for _, ply in pairs(player.GetAll()) do
-            if ply:IsAdmin() then
-                ply:ChatPrint("Too many Communications Arrays! Please remove some before spawning more.")
-            end
-        end
-		return
+		CommPhys:EnableMotion( false )
 	end
 
 	hook.Run( "CommunicationsArrayInitialized", self )

@@ -56,19 +56,9 @@ function ENT:Initialize()
 	local GenPhys = self:GetPhysicsObject()
 	if IsValid( GenPhys ) then
 		GenPhys:Wake()
+        GenPhys:EnableMotion( false )
 	end
 
-    local ent_count = #ents.FindByClass( self:GetClass() )
-    if ent_count > 1 then
-        self:Remove()
-        print( "Too many Gravity Generators! Please remove some before spawning more." )
-        for _, ply in pairs(player.GetAll()) do
-            if ply:IsAdmin() then
-                ply:ChatPrint("Too many Gravity Generators! Please remove some before spawning more.")
-            end
-        end
-        return
-    end
     hook.Run( "OnGravGenInitialized", self )
     self.Working = true
     self:SetPlayerRepairing(false)

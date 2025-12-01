@@ -40,22 +40,10 @@ function ENT:Initialize()
 	self:SetMaxHealth( 500 )
 	self:SetUseType( SIMPLE_USE )
 
-	-- We can improve this later. Let's first make sure the system works!
-	-- TODO: Do something else. Perhaps a hook so gamemode can notify in it's own way?
-	if table.Count( ents.FindByClass( "lifesupport" ) ) ~= 1 then
-		for k, v in player.Iterator() do
-			if not IsValid( v ) then continue end
-			if v:IsAdmin() then
-				v:ChatPrint( "Another life support system already exists. Please remove it before placing a new one." )
-			end
-		end
-		self:Remove()
-		return
-	end
-
 	local SuppPhys = self:GetPhysicsObject()
 	if IsValid( SuppPhys ) then
 		SuppPhys:Wake()
+		SuppPhys:EnableMotion( false )
 	end
 
 	hook.Run( "OnLifeSupportCreated", self )
