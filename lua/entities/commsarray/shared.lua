@@ -32,18 +32,8 @@ function ENT:SetupDataTables()
             max = 10000,
         }
     } )
-	self:NetworkVar( "Bool", 1, "DisplayHealth", {
-		KeyName = "DisplayHealth",
-		Edit = {
-			type = "Boolean",
-			title = "Display Health Bar",
-			min = 0,
-			max = 1,
-		}
-	} )
 	
 	if SERVER then
 		self:SetCommsHealth( 200 )
-		self:SetDisplayHealth( true )
 	end
 end

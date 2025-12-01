@@ -52,20 +52,10 @@ function ENT:SetupDataTables()
 			max = 1,
 		}
 	} )
-	self:NetworkVar( "Bool", 3, "DisplayHealth", {
-		KeyName = "DisplayHealth",
-		Edit = {
-			type = "Boolean",
-			title = "Display Health Bar",
-			min = 0,
-			max = 1,
-		}
-	} )
-	
+
 	if SERVER then
 		self:SetGravHealth( 200 )
 		self:SetDisableGrav( true )
 		self:SetDisableFric( true )
-		self:SetDisplayHealth( true )
 	end
 end

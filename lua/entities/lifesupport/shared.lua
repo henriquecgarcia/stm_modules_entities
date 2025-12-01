@@ -55,15 +55,6 @@ function ENT:SetupDataTables()
 			max = 5,
 		}
 	} )
-	self:NetworkVar( "Bool", 2, "DisplayHealth", {
-		KeyName = "DisplayHealth",
-		Edit = {
-			type = "Boolean",
-			title = "Display Health Bar",
-			min = 0,
-			max = 1,
-		}
-	} )
 
 	self:NetworkVar( "Int", 2, "Health", {
 		KeyName = "Health",
@@ -91,7 +82,6 @@ function ENT:SetupDataTables()
 		self:SetDisableSupport( true )
 		self:SetDamageAmount( 2 )
 		self:SetDamageSeconds( 1 )
-		self:SetDisplayHealth( true )
 
 		self:SetMaxHealth( 200 )
 		self:SetHealth( 200 )
