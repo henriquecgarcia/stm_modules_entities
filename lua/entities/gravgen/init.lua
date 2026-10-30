@@ -4,45 +4,7 @@ AddCSLuaFile( "shared.lua" )
 
 include( "shared.lua" )
 
-local disabled_gravity = {} -- Table to keep track of disabled gravity generators
--- Format:
-    -- disabled_gravity[deck] = {entire_deck = true/false, sections = {[section1] = true, [section2] = true, ...}}
-local pLocators = {}
-hook.Add( "Star_Trek.Sections.LocationChanged", "GravGen.LocationChanged", function(ply, old_deck, old_sectionId, new_deck, new_sectionId)
-    pLocators[ply:SteamID64()] = {deck = new_deck, section = new_sectionId}
-end)
-
-hook.Add( "OnDisableGravitySectionCreated", "GravGen.OnDisableGravitySectionCreated", function(ent)
-    local deck = ent.Deck
-    if not disabled_gravity[deck] then
-        disabled_gravity[deck] = {entire_deck = false, sections = {}}
-    end
-    disabled_gravity[deck].sections[ent.Section] = true
-end)
-hook.Add( "OnDisableGravitySectionRemoved", "GravGen.OnDisableGravitySectionRemoved", function(ent)
-    local deck = ent.Deck
-    if not disabled_gravity[deck] then return end
-    disabled_gravity[deck].sections[ent.Section] = nil
-    if table.IsEmpty(disabled_gravity[deck].sections) then
-        disabled_gravity[deck] = nil
-    end
-end)
-
-hook.Add( "OnDisableGravityDeckCreated", "GravGen.OnDisableGravityDeckCreated", function(ent)
-    local deck = ent.Deck
-    if not disabled_gravity[deck] then
-        disabled_gravity[deck] = {entire_deck = true, sections = {}}
-    end
-    disabled_gravity[deck].entire_deck = true
-end)
-hook.Add( "OnDisableGravityDeckRemoved", "GravGen.OnDisableGravityDeckRemoved", function(ent)
-    local deck = ent.Deck
-    if not disabled_gravity[deck] then return end
-    disabled_gravity[deck].entire_deck = false
-    if table.IsEmpty(disabled_gravity[deck].sections) then
-        disabled_gravity[deck] = nil
-    end
-end)
+local DISABLE_SYSTEM = "gravity"
 
 function ENT:Initialize()
 	self:SetModel( "models/props/console_control_round.mdl" )
@@ -63,23 +25,18 @@ function ENT:Initialize()
     self.Working = true
     self:SetPlayerRepairing(false)
 
-    for _, ply in player.Iterator() do
-        local success, deck, section = Star_Trek.Sections:DetermineSection( self:GetPos() )
-		if success then
-			pLocators[ply:SteamID64()] = {deck = deck, section = section}
-		end
-        self:ApplyGravity(ply, success)
+    local disable_zones = StarTrekEntities.DisableZones
+    if disable_zones then
+        disable_zones:PrimePlayers()
+        disable_zones:Rebuild(DISABLE_SYSTEM)
     end
 
-    for k, v in ipairs(ents.FindByClass("disablegravity_*")) do
-        if v.Deck == self.Deck then
-            disabled_gravity[v.Deck] = disabled_gravity[v.Deck] or {entire_deck = false, sections = {}}
-            if v.Section then
-                disabled_gravity[v.Deck].sections[v.Section] = true
-            else
-                disabled_gravity[v.Deck].entire_deck = true
-            end
-        end
+    for _, ply in player.Iterator() do
+        local success, deck, section = Star_Trek.Sections:DetermineSection( ply:GetPos() )
+		if success and disable_zones then
+            disable_zones:SetPlayerLocation(ply, deck, section)
+		end
+        self:ApplyGravity(ply, not success)
     end
 end
 
@@ -125,11 +82,12 @@ function ENT:OnTakeDamage( dmg )
 		PrintMessage( HUD_PRINTCENTER, "Gravity Generator has been destroyed!" )
 		self:Ignite( 10, 250 )
         self.Working = false
+        hook.Run( "OnGravGenDestroyed", self )
 	end
 end
 
-local last_shock_time = 0
 function ENT:Think()
+    local now = CurTime()
     local health = self:Health()
 	local maxHealth = self:GetMaxHealth()
 	if health >= maxHealth then
@@ -143,8 +101,8 @@ function ENT:Think()
 
 		time_interval = math.Clamp( time_interval, 5, 60 ) -- Ensure the interval is between 5 and 60 seconds
 
-		if last_shock_time + time_interval < CurTime() then
-			last_shock_time = CurTime()
+		if (self.NextShockSound or 0) < now then
+			self.NextShockSound = now + time_interval
 			self:EmitSound( "ambient/levels/labs/electric_explosion1.wav", 75, 100, 0.5 )
 		end
 		if not self.ShockEnt or not IsValid( self.ShockEnt ) then
@@ -166,19 +124,24 @@ function ENT:Think()
         end
 		self:SetPlayerRepairing( false )
 	end
+
+    self:NextThink( now + 0.25 )
+    return true
 end
 
 function ENT:OnRemove()
     for k, v in player.Iterator() do
         self:ApplyGravity(v, false) -- Reset gravity for all players
     end
+    hook.Run( "OnGravGenRemoved", self )
 end
 
 function ENT:ApplyGravity(ply, remove_grav)
     if not IsValid(ply) or ply == self then return end
 
-    local pLocator = pLocators[ply:SteamID64()] or {}
-    local ShouldIgnore, OverWrite = hook.Run("ShouldIgnoreGravity", ply, {pLocator.deck, pLocator.section})
+    local disable_zones = StarTrekEntities.DisableZones
+    local pLocator = disable_zones and disable_zones:GetPlayerLocation(ply) or {}
+    local ShouldIgnore, OverWrite = hook.Run("ShouldIgnoreGravity", ply, pLocator)
     if ShouldIgnore then
         if OverWrite ~= false then
             remove_grav = self:Health() > 0
@@ -198,8 +161,9 @@ function ENT:ApplyGravity(ply, remove_grav)
 end
 
 function ENT:ThinkGravity()
+    local disable_zones = StarTrekEntities.DisableZones
     for k, v in player.Iterator() do
-        local pLocator = pLocators[v:SteamID64()] or {}
+        local pLocator = disable_zones and disable_zones:GetPlayerLocation(v) or {}
         local deck = pLocator.deck or nil
         local section = pLocator.section or nil
 
@@ -207,15 +171,8 @@ function ENT:ThinkGravity()
         -- Not in the ship, remove grav!!!!!!!!!!
         if deck == nil or section == nil then
             should_remove_grav = true
-        else
-            local grav_data = disabled_gravity[deck] or {}
-            if grav_data.entire_deck then
-                -- Deck's gravity is disabled
-                should_remove_grav = true
-            elseif grav_data.sections and grav_data.sections[section] then
-                -- Section's gravity is disabled
-                should_remove_grav = true
-            end
+        elseif disable_zones and disable_zones:IsDisabled(DISABLE_SYSTEM, deck, section) then
+            should_remove_grav = true
         end
 
         if self:Health() <= 0 or not self.Working then

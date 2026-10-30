@@ -15,30 +15,54 @@ if SERVER then
 	util.AddNetworkString("StarTrekEntities.StatusSync")
 
 	function StarTrekEntities:SyncStatus(ply, required_system)
-		if not ply or not ply:IsPlayer() then
-			ply = player.GetAll()
+		local recipients = ply
+		if not IsValid(recipients) or not recipients:IsPlayer() then
+			recipients = player.GetAll()
+		end
+
+		local status = self.Status
+		local payload
+		if required_system then
+			if not status[required_system] then return end
+			payload = { [required_system] = status[required_system] }
+		else
+			payload = {
+				comms = status.comms,
+				gravity = status.gravity,
+				lifesupport = status.lifesupport,
+			}
 		end
 
 		net.Start("StarTrekEntities.StatusSync")
-		if required_system then
-			net.WriteTable({ [required_system] = self.Status[required_system] })
-		else
-			net.WriteTable({
-				comms = self.Status.comms,
-				gravity = self.Status.gravity,
-				lifesupport = self.Status.lifesupport,
-			})
-			net.Send(ply)
-		end
+		net.WriteTable(payload)
+		net.Send(recipients)
 	end
 
 	net.Receive("StarTrekEntities.StatusSync", function(len, ply)
 		StarTrekEntities:SyncStatus(ply)
 	end)
+
 	function StarTrekEntities:SetStatus(syst, key, value)
 		if not self.Status[syst] then return end
+		if self.Status[syst][key] == value then return end
 		self.Status[syst][key] = value
-		StarTrekEntities:SyncStatus(nil, syst)
+		self:SyncStatus(nil, syst)
+	end
+
+	function StarTrekEntities:SetSystemStatus(syst, values)
+		if not self.Status[syst] or not values then return end
+
+		local changed = false
+		for key, value in pairs(values) do
+			if self.Status[syst][key] ~= value then
+				self.Status[syst][key] = value
+				changed = true
+			end
+		end
+
+		if changed then
+			self:SyncStatus(nil, syst)
+		end
 	end
 
 	hook.Add("OnLifeSupportCreated", "StarTrekEntities.LifeSupportStatus", function(ent)
@@ -85,12 +109,11 @@ else
 	net.Receive("StarTrekEntities.StatusSync", function()
 		local status = net.ReadTable()
 		if not status then return end
-		local required_system = net.ReadString()
-		if required_system then
-			if not StarTrekEntities.Status[required_system] then return end
-			StarTrekEntities.Status[required_system] = status[required_system]
-		else
-			StarTrekEntities.Status = status
+
+		for syst, data in pairs(status) do
+			if StarTrekEntities.Status[syst] then
+				StarTrekEntities.Status[syst] = data
+			end
 		end
 	end)
 end
@@ -100,11 +123,16 @@ function StarTrekEntities:GetStatus(syst, key, default)
 	if not self.Status[syst] then
 		return default
 	end
-	return self.Status[syst][key] or default
+	local value = self.Status[syst][key]
+	if value == nil then
+		return default
+	end
+	return value
 end
 
 
 StarTrekEntities:Include("sv_fix_think.lua", "sv_")
 StarTrekEntities:Include("sv_save_entities.lua", "sv_")
+StarTrekEntities:Include("sv_disable_zones.lua", "sv_")
 StarTrekEntities:Include("sv_communication_scramble.lua", "sv_")
 StarTrekEntities:Include("sv_lifesupport_grav_think.lua", "sv_")

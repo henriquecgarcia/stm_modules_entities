@@ -7,44 +7,43 @@ local zalgo_mid = {"̕","̛","̀","́","͘","̡","̢","̧","̨","̴","̵","̶","
 local zalgo_down = {"̖","̗","̘","̙","̜","̝","̞","̟","̠","̤","̥","̦","̩","̪","̫","̬","̭","̮","̯","̰","̱","̲","̳","̹","̺","̻","̼","ͅ","͇","͈","͉","͍","͎","͓","͔","͕","͖","͙","͚"}
 
 -- Scramble text with intensity level (1–6)
+math.randomseed(os.time())
+
 function StarTrekEntities.Comms:ScrambleText(text, intensity)
 	if not text or text == "" then return "" end
 	if intensity == 0 then return text end
-	math.randomseed(os.time()) -- Seed random number generator
-	intensity = math.Clamp(intensity, 1, 6) -- Ensure intensity is between 1 and 6
-	local function getRandom(tbl, count)
-		local out = ""
+
+	intensity = math.Clamp(intensity or 0, 1, 6)
+	local random = math.random
+
+	local function appendRandom(out, tbl, count)
 		for i = 1, count do
-			out = out .. tbl[math.random(#tbl)]
+			out[#out + 1] = tbl[random(#tbl)]
 		end
-		return out
 	end
 
-	local result = ""
+	local result = {}
 	for i = 1, #text do
 		local char = text:sub(i, i)
 		if char:match("%s") then
-			result = result .. char -- don't glitch spaces
+			result[#result + 1] = char
 		else
-			local up = getRandom(zalgo_up, intensity)
-			local mid = getRandom(zalgo_mid, math.max(0, intensity - 2))
-			local down = getRandom(zalgo_down, intensity)
-			result = result .. char .. up .. mid .. down
+			result[#result + 1] = char
+			appendRandom(result, zalgo_up, intensity)
+			appendRandom(result, zalgo_mid, math.max(0, intensity - 2))
+			appendRandom(result, zalgo_down, intensity)
 		end
 	end
 
-	return result
+	return table.concat(result)
 end
-
-local comms_status = {
-	active = false,
-	scrambled_level = 0,
-}
 
 hook.Add("CommunicationsArrayInitialized", "ActivateCommsSystem", function(ent)
 	if not IsValid(ent) then return end
-	StarTrekEntities:SetStatus("comms", "active", true)
-	StarTrekEntities:SetStatus("comms", "scrambled_level", 0)
+	StarTrekEntities:SetSystemStatus("comms", {
+		active = true,
+		scrambled_level = 0,
+	})
 end)
 
 hook.Add("CommunicationsArrayDamaged", "HandleCommsDamage", function(ent, dmg, damage_level)
@@ -55,42 +54,42 @@ end)
 hook.Add("CommunicationsArrayRepairing", "HandleCommsRepairing", function(ent, intensity)
 	if not IsValid(ent) then return end
 
-	StarTrekEntities:SetStatus("comms", "scrambled_level", intensity)
-
-	StarTrekEntities:SetStatus("comms", "active", true) -- Assume repairing means the system is still active
+	StarTrekEntities:SetSystemStatus("comms", {
+		active = true,
+		scrambled_level = intensity,
+	})
 end)
 
 hook.Add("CommunicationsArrayRemoved", "DeactivateCommsSystem", function(ent, aux)
 	if not IsValid(ent) then return end
-	StarTrekEntities:SetStatus("comms", "active", false)
-	StarTrekEntities:SetStatus("comms", "scrambled_level", 0)
+	StarTrekEntities:SetSystemStatus("comms", {
+		active = false,
+		scrambled_level = 0,
+	})
 end)
 
 hook.Add("PlayerSay", "ScrambleChat", function(ply, text)
-	local EGM = GAMEMODE or GM
+	local EGM = GAMEMODE or GM or {}
 	if (EGM.Name or "") == "Star Trek RP" then return end -- Don't interfere with EGM Star Trek RP
 	if EGM.AcceptEULA == true then return end -- Don't interfere with EGM (I think...)
-	if text[1] ~= "/" then return end -- Not my thing
-	text = text:sub(2) -- Remove the slash
-	local args = string.Explode(" ", text)
+	if text:sub(1, 1) ~= "/" then return end -- Not my thing
+
+	text = text:sub(2)
+	local command, message = text:match("^(%S+)%s*(.*)$")
 	local comms_status = StarTrekEntities.Status.comms or {active = false, scrambled_level = 0}
-	if args[1] == "comms" then
+	if command == "comms" then
 		if not comms_status.active then
 			ply:ChatPrint("Communications Array is not active.")
 			return ""
 		end
-		if #args < 2 then
+		if not message or message == "" then
 			ply:ChatPrint("Usage: /comms <message>")
 			return ""
 		end
-		local message = table.concat(args, " ", 2)
-		if not message or message == "" then
-			ply:ChatPrint("Please provide a message to scramble.")
-			return ""
-		end
 		local intensity = comms_status.scrambled_level or 0
-		local scrambled_message = StarTrekEntities.Comms.ScrambleText(message, intensity)
-		BroadcastLua("chat.AddText(Color(255, 0, 0), '[Comms] " .. ply:Nick() .. "', Color(255, 255, 255), ': " .. scrambled_message .. "')")
+		local scrambled_message = StarTrekEntities.Comms:ScrambleText(message, intensity)
+		local speaker = "[Comms] " .. ply:Nick()
+		BroadcastLua("chat.AddText(Color(255, 0, 0), " .. string.format("%q", speaker) .. ", Color(255, 255, 255), " .. string.format("%q", ": " .. scrambled_message) .. ")")
 		return ""
 	end
 end)

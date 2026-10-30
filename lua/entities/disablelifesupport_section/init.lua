@@ -3,45 +3,27 @@ AddCSLuaFile( "shared.lua" )
 include( "shared.lua" )
 
 function ENT:Initialize()
-	self:SetModel( "models/props_junk/trafficcone001a.mdl" )
-	self:PhysicsInit( SOLID_VPHYSICS )
-	self:SetMoveType( MOVETYPE_NONE )
-	self:SetSolid( SOLID_VPHYSICS )
-	self:SetCollisionGroup( COLLISION_GROUP_WEAPON )
-	self:SetPos( self:GetPos() + Vector( 0, 0, 70 ) ) -- This spawns underground in some maps so set to 100 then DropToFloor().
-	self:DropToFloor()
-
-	local phys = self:GetPhysicsObject()
-	if IsValid( phys ) then
-		phys:Wake()
-	end
-
-	local success, deck, section = Star_Trek.Sections:DetermineSection( self:GetPos() )
-	self.Section = section
-	self.Deck = deck
-	if not success then
-		for k, v in player.Iterator() do
-			if not IsValid( v ) then continue end
-			if v:IsAdmin() then
-				v:ChatPrint( "You can't place this entity here. It's not a valid location." )
-			end
-		end
-		print( "Failed to determine section for DisableLifeSupport entity at position: " .. tostring(self:GetPos()) )
-		print( "You can't have this entity in space") -- #TODO: Make this a notification! people can't read prints
+	local disable_zones = StarTrekEntities.DisableZones
+	if not disable_zones then
 		self:Remove()
 		return
 	end
 
-
-	hook.Run( "OnDisableLifeSupportSectionCreated", self )
+	disable_zones:InitializeEntity(self, {
+		system = "lifesupport",
+		scope = "section",
+		model = "models/props_junk/trafficcone001a.mdl",
+		name = "DisableLifeSupport",
+		created_hook = "OnDisableLifeSupportSectionCreated",
+	})
 end
 
 
 function ENT:OnRemove()
-	if not self.Deck or not self.Section then
-		return
+	local disable_zones = StarTrekEntities.DisableZones
+	if disable_zones then
+		disable_zones:RemoveEntity(self, "OnDisableLifeSupportSectionRemoved")
 	end
-	hook.Run( "OnDisableLifeSupportSectionRemoved", self )
 end
 
 function ENT:CanProperty(ply, property)
@@ -50,6 +32,9 @@ function ENT:CanProperty(ply, property)
 	end
 end
 function ENT:CanTool(ply, tool)
+	if tool == "remover" then
+		return true
+	end
 	if tool == "permaprops" then
 		return false
 	end

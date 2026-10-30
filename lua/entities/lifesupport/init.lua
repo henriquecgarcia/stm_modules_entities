@@ -3,32 +3,7 @@ AddCSLuaFile( "shared.lua" )
 
 include( "shared.lua" )
 
-local disabled_sections = {}
-local disabled_decks = {}
-
-local players_location = {}
-hook.Add( "Star_Trek.Sections.LocationChanged", "LifeSupport.LocationChanged", function(ply, old_deck, old_sectionId, new_deck, new_sectionId)
-	players_location[ply:SteamID64()] = {new_deck, new_sectionId}
-end)
-
-hook.Add( "OnDisableLifeSupportSectionCreated", "DisabledSections.Created", function(ent)
-	disabled_sections[ent.Deck] = disabled_sections[ent.Deck] or {}
-	table.insert(disabled_sections[ent.Deck], ent.Section)
-end)
-
-hook.Add( "OnDisableLifeSupportSectionRemoved", "DisabledSections.Removed", function(ent)
-	table.RemoveByValue(disabled_sections[ent.Deck], ent.Section)
-end)
-
-hook.Add( "OnDisableLifeSupportDeckCreated", "DisabledDecks.Created", function(ent)
-	print( "OnDisableLifeSupportDeckCreated: " .. ent.Deck )
-	table.insert(disabled_decks, ent.Deck)
-end)
-
-hook.Add( "OnDisableLifeSupportDeckRemoved", "DisabledDecks.Removed", function(ent)
-	print( "OnDisableLifeSupportDeckRemoved: " .. ent.Deck )
-	table.RemoveByValue(disabled_decks, ent.Deck)
-end)
+local DISABLE_SYSTEM = "lifesupport"
 
 function ENT:Initialize()
 	self:SetModel( "models/props/atmospherecontrol.mdl" )
@@ -52,19 +27,10 @@ function ENT:Initialize()
 
 	self:UpdateScannerData()
 
-	for k, v in player.Iterator() do
-		local success, deck, section = Star_Trek.Sections:DetermineSection( self:GetPos() )
-		if success then
-			players_location[v:SteamID64()] = {deck, section}
-		end
-	end
-
-	for k, v in ipairs(ents.FindByClass("disablelifesupport_deck")) do
-		table.insert(disabled_decks, v.Deck)
-	end
-	for k, v in ipairs(ents.FindByClass("disablelifesupport_section")) do
-		disabled_sections[v.Deck] = disabled_sections[v.Deck] or {}
-		table.insert(disabled_sections[v.Deck], v.Section)
+	local disable_zones = StarTrekEntities.DisableZones
+	if disable_zones then
+		disable_zones:PrimePlayers()
+		disable_zones:Rebuild(DISABLE_SYSTEM)
 	end
 end
 
@@ -145,7 +111,6 @@ function ENT:UpdateScannerData()
 
 end
 
-local last_shock_time = 0
 function ENT:DoDamage(ply)
 	if not IsValid( ply ) then return end
 	if not ply:IsPlayer() then return end
@@ -167,6 +132,7 @@ function ENT:DoDamage(ply)
 end
 
 function ENT:Think()
+	local now = CurTime()
 	local health = self:Health()
 	local maxHealth = self:GetMaxHealth()
 	if health >= maxHealth then
@@ -180,8 +146,8 @@ function ENT:Think()
 
 		time_interval = math.Clamp( time_interval, 5, 60 ) -- Ensure the interval is between 5 and 60 seconds
 
-		if last_shock_time + time_interval < CurTime() then
-			last_shock_time = CurTime()
+		if (self.NextShockSound or 0) < now then
+			self.NextShockSound = now + time_interval
 			self:EmitSound( "ambient/levels/labs/electric_explosion1.wav", 75, 100, 0.5 )
 		end
 		if not self.ShockEnt or not IsValid( self.ShockEnt ) then
@@ -204,6 +170,8 @@ function ENT:Think()
 		self:SetPlayerRepairing( false )
 	end
 
+	self:NextThink( now + 0.25 )
+	return true
 end
 
 function ENT:OnRemove()
@@ -212,7 +180,9 @@ end
 
 
 function ENT:DoOxygenDamage(ply)
-	local ignoreDamage, overwriteLifeSupport = hook.Run("ShouldIgnoreLifeSupportDamage", ply, players_location[ply:SteamID64()] or {})
+	local disable_zones = StarTrekEntities.DisableZones
+	local location = disable_zones and disable_zones:GetPlayerLocation(ply) or {}
+	local ignoreDamage, overwriteLifeSupport = hook.Run("ShouldIgnoreLifeSupportDamage", ply, location)
 	
 	-- If the hook wants to handle damage itself, respect that decision
 	if ignoreDamage then
@@ -238,13 +208,15 @@ function ENT:DoOxygenDamage(ply)
 	ply:TakeDamageInfo( dmg )
 end
 
-local last_damage_time = 0
 function ENT:ThinkOxygen()
 	-- Rate limiting: don't damage too frequently
-	if last_damage_time + self:GetDamageSeconds() > CurTime() then
+	local now = CurTime()
+	if (self.NextOxygenDamage or 0) > now then
 		return
 	end
-	last_damage_time = CurTime()
+	self.NextOxygenDamage = now + self:GetDamageSeconds()
+
+	local disable_zones = StarTrekEntities.DisableZones
 
 	-- Check each player for oxygen deprivation conditions
 	for i, ply in player.Iterator() do
@@ -252,9 +224,9 @@ function ENT:ThinkOxygen()
 			continue
 		end
 
-		local steamId = ply:SteamID64()
-		local playerLocation = players_location[steamId] or {}
-		local deck, sectionId = unpack(playerLocation)
+		local playerLocation = disable_zones and disable_zones:GetPlayerLocation(ply) or nil
+		local deck = playerLocation and playerLocation.deck or nil
+		local sectionId = playerLocation and playerLocation.section or nil
 
 		-- Check various conditions that would cause oxygen damage
 		local shouldTakeDamage = false
@@ -263,10 +235,7 @@ function ENT:ThinkOxygen()
 		if deck == nil or sectionId == nil then
 			shouldTakeDamage = true
 		-- Is the player in a disabled deck?
-		elseif table.HasValue(disabled_decks, deck) then
-			shouldTakeDamage = true
-		-- Is the player in a disabled section?
-		elseif table.HasValue(disabled_sections[deck] or {}, sectionId) then
+		elseif disable_zones and disable_zones:IsDisabled(DISABLE_SYSTEM, deck, sectionId) then
 			shouldTakeDamage = true
 		-- Is the life support system destroyed?
 		elseif self:Health() <= 0 then

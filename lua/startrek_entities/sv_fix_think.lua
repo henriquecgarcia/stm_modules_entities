@@ -20,7 +20,6 @@ hook.Add("Star_Trek.tools.sonic_driver.trace_hit", "Valid_Ents_Fix_Trace", funct
 	local hp = hit_ent:Health()
 	local max_hp = hit_ent:GetMaxHealth()
 	if hp >= max_hp then return end
-	math.randomseed(os.time() + hit_ent:EntIndex())
 	local repair_amount = math.random(15, 30)
 	hit_ent:SetHealth(math.Clamp(hp + repair_amount, 0, max_hp))
 	hit_ent:SetPlayerRepairing(true)
